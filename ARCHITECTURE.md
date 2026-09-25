@@ -141,22 +141,13 @@ They must **open** when any of these stops holding. Two ways:
 
 **Specified in `pine/design/cpm_ccu_can_interface.md`** — that document is the contract; the summary below is for orientation only. The CAN bus is shared by up to 32 CPMs (8 per rack, 4 racks) and the CCU: **250 kbps**, CANopen (CiA 301), **CCU = node 1, CPM = 2 + rack × 8 + slot** (nodes 2–33) from the backplane straps.
 
-| Object | Content | Access |
-|---|---|---|
-| `0x1000`, `0x1008–0x100A`, `0x1018` | Device type, name, versions, identity (vendor, product, serial) | SDO |
-| `0x1017` | Producer heartbeat **500 ms** | |
-| `0x1016` | Consumer heartbeat: CCU, **1500 ms** | |
-| `0x1F50` | Program download (CiA 302) — CPM's own firmware (production MCU) | SDO block |
-| `0x2000` | Outlet status record: state, CP state, PP rating, lock state, contactor state, offered current, faults | TPDO1 + SDO |
-| `0x2010` | Metering: per-phase V, I, P; energy counter (Wh) | TPDO2 + SDO |
-| `0x2020` | Event record: plug in/out, RFID tag (UID up to 10 bytes → notification in TPDO3, full UID read by SDO), E-stop, lock failed | TPDO3 + SDO |
-| `0x2100` | CCU commands: allocated current (0.1 A), session command (authorize / stop / reserve / disable / clear fault), lock request, LED status, auth feedback | RPDO1 + SDO |
-| `0x2200` | Paired SIU identity: UID, serial, hardware info, firmware version, bootloader version | SDO |
-| `0x2210` | SIU firmware relay: image download + status | SDO block |
-| `0x2300` | Diagnostics: SIU link counters, CAN error counters, fault history, uptime | SDO |
-| EMCY | Fault raised / cleared (fault code + outlet state) | EMCY |
-
-**PDO timing:** TPDO1 on change (inhibit 50 ms) + every 1 s; TPDO2 every 1 s; TPDO3 on event. **Bus load** for 32 CPMs ≈ 32 × (2 heartbeats + ~3 PDOs) per second ≈ 160 frames/s ≈ 21 kbit/s — **under 10 %** of 250 kbps, with room for SDO transfers (firmware relay) one outlet at a time.
+| What | How (details in the spec) |
+|---|---|
+| Liveness | Heartbeats 500 ms both ways; CPM stops gracefully after 1.5 s without the CCU, or 3 s without a command (RPDO1 deadline) |
+| CCU → CPM | **RPDO1** (`0x200+node`), the *desired state*, re-sent every 1 s: session command, LED status, allocated current, lock request, card-feedback / fault-clear counters, `cmd_seq` |
+| CPM → CCU | **TPDO1** status (on change + 1 s), **TPDO2** energy/power (1 s), **TPDO3** events (card tap, plug, …), **TPDO4** per-phase values (1 s), **EMCY** on faults |
+| On request (SDO) | Identity, outlet config, full RFID UID, event log, faults, paired-SIU identity and approval, SIU firmware relay, diagnostics |
+| Load | ≈ 10 % of the bus for 32 CPMs; SIU firmware relay throttled by the CCU to ~15 % |
 
 ## 8. Firmware updates
 
