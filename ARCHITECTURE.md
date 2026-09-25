@@ -137,9 +137,9 @@ They must **open** when any of these stops holding. Two ways:
 3. SIU handshake; wait for the CCU's NMT *start*.
 4. Only then release the commanded-trip line. The outlet starts in `UNAVAILABLE` until the CCU enables it.
 
-## 7. CANopen interface to the CCU (sketch)
+## 7. CANopen interface to the CCU
 
-The CAN bus is shared by up to 32 CPMs (8 per rack, 4 racks) and the CCU: **250 kbps**, CANopen (CiA 301), node ID = `rack × 8 + slot + 1` from the backplane straps (hardware_design.md §3.7). This section is a starting point — the full CPM↔CCU interface deserves its own spec document, like the SIU protocol (§11).
+**Specified in `pine/design/cpm_ccu_can_interface.md`** — that document is the contract; the summary below is for orientation only. The CAN bus is shared by up to 32 CPMs (8 per rack, 4 racks) and the CCU: **250 kbps**, CANopen (CiA 301), **CCU = node 1, CPM = 2 + rack × 8 + slot** (nodes 2–33) from the backplane straps.
 
 | Object | Content | Access |
 |---|---|---|
@@ -194,7 +194,7 @@ cpm/
 ## 11. Open decisions
 
 1. **Sharing `common/protocol` with the SIU repo.** Options: (a) a small third repo (`pine-common`) included in both as a **git submodule** — one source of truth, recommended; (b) copies kept in sync by a script + a test that fails when they differ; (c) move both firmwares into one repo. Needed before `siu_master` is written.
-2. **CPM↔CCU CANopen interface spec** — §7 is a sketch; it needs its own document (object dictionary, PDO mapping, EMCY codes, NMT sequence, firmware download) before the CCU side is built.
+2. ~~**CPM↔CCU CANopen interface spec**~~ — written: `pine/design/cpm_ccu_can_interface.md` (v0.1).
 3. **CANopenNode version and footprint** on 64 KB — measure early; if it doesn't fit with the application, move the prototype to the NUCLEO-G0B1RE sooner.
 4. **Graceful-stop timing** — 3 s maximum wait for the vehicle to drop to state B (IEC 61851-1); confirm against the edition used for certification.
 5. **Metering IC** choice and whether billing-grade (MID) accuracy is required (hardware_design.md §3.4) — defines `app/metering`.
