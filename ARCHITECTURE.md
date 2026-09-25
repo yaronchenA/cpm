@@ -26,9 +26,9 @@ Status: **architecture v0.1** — the repo currently holds only the M0 board bri
 | MCU | STM32F302R8 — Cortex-M4F 72 MHz, **64 KB flash, 16 KB RAM**, bxCAN | Cortex-M0+ class with more memory, e.g. STM32G0B1 (512 KB / 144 KB, 2× FDCAN) — prototype_plan.md §2.3 |
 | Rule | Don't depend on the FPU or on 72 MHz (production MCU is M0+) | |
 
-**Memory is the prototype's real limit.** Rough flash budget: CANopenNode stack + object dictionary ≈ 20–25 KB, SIU protocol master ≈ 6 KB, application ≈ 10–15 KB, ST startup/drivers ≈ 3 KB → **≈ 40–50 KB of 64 KB**. That fits one application, but *not* the SIU-style bootloader + two 26 KB slots. So:
-- **Prototype:** single application, programmed over SWD; CPM firmware update over CAN is designed (§8) but only enabled on the production MCU.
-- **Production MCU:** same bootloader scheme as the SIU (bootloader + app slot + staging slot), sized for the bigger flash.
+**Memory is the prototype's real limit.** Rough flash budget: CANopenNode stack + object dictionary ≈ 20–25 KB, SIU protocol master ≈ 6 KB, application ≈ 10–15 KB, ST startup/drivers ≈ 3 KB → **≈ 40–50 KB of 64 KB**. That fits one application, but *not* the SIU-style bootloader + two 26 KB slots. **Decided: CPM firmware update is out of scope for the prototype.** The prototype CPM is a single application, programmed over SWD — no bootloader. On the F302R8 the SIU's scheme (bootloader + two slots) would leave ~26 KB per slot, too small for a ~40–50 KB application; the alternatives (a bootloader that receives images itself, or external SPI flash for staging) aren't worth building for a chip we won't use in production.
+- **Production MCU:** STM32G0B1 class (512 KB) — same bootloader scheme as the SIU (bootloader + app slot + staging slot, first-boot install), so one bootloader design serves both modules.
+- **Relaying SIU updates** (§8) stays in the prototype's scope: it needs no flash on the CPM.
 
 RAM budget (16 KB): CANopenNode ≈ 3–4 KB, SIU master buffers ≈ 1.5 KB (RX/TX 256 B + response parse + SIU image relay chunk), outlet state ≈ 0.5 KB, log ≈ 0.5 KB, stacks ≈ 2 KB → ≈ 8–9 KB, leaving headroom.
 
@@ -161,7 +161,7 @@ The CAN bus is shared by up to 32 CPMs (8 per rack, 4 racks) and the CCU: **250 
 ## 8. Firmware updates
 
 - **SIU updates (relay):** the CCU downloads the SIU image into the CPM (`0x2210`, SDO block transfer, 1 KB at a time into RAM, never the whole image — it doesn't fit), and the CPM forwards it chunk by chunk (`FW_CHUNK`, 200 B per poll) with flow control back to the CCU. Uses the SIU protocol exactly as `tools/fw_update.py` does today. No flash needed on the CPM for this.
-- **CPM's own updates:** production MCU only (§2) — same scheme as the SIU (bootloader + app slot + staging slot, first-boot install at the factory, manufacturing_procedures.md §5), image via CiA 302 program download (`0x1F50`).
+- **CPM's own updates:** **not in the prototype** (§2). Production MCU only — same scheme as the SIU (bootloader + app slot + staging slot, first-boot install at the factory, manufacturing_procedures.md §5), image via CiA 302 program download (`0x1F50`).
 - **Signing:** open item for both modules (manufacturing_procedures.md §12).
 
 ## 9. Testing
